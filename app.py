@@ -59,7 +59,8 @@ with tab_alarm:
         sound = st.selectbox("알람음", ["기본음 1", "기본음 2", "자연의 소리", "무음"])
         vibration = st.checkbox("진동 켜기", value=True)
         
-        if st.button("알람 저장", use_container_width=True):
+        # 버튼에 key 추가
+        if st.button("알람 저장", key="btn_save_alarm", use_container_width=True):
             new_alarm = {
                 "id": str(time.time()),
                 "time": alarm_time.strftime("%H:%M"),
@@ -92,13 +93,14 @@ with tab_alarm:
                 st.markdown(f"<h2 style='color: {color}; margin-bottom: 0px;'>{alarm['time']}</h2>", unsafe_allow_html=True)
                 st.caption(f"라벨: {alarm['label']} | 반복: {alarm['repeat']}")
             with c2:
-                # On/Off 토글
+                # On/Off 토글 (이미 고유 key 있음)
                 toggle = st.toggle("On", value=is_active, key=f"toggle_{alarm['id']}")
                 if toggle != is_active:
                     st.session_state.alarms[idx]['active'] = toggle
                     save_alarms(st.session_state.alarms)
                     st.rerun()
             with c3:
+                # 삭제 버튼 (이미 고유 key 있음)
                 if st.button("❌", key=f"del_{alarm['id']}"):
                     st.session_state.alarms.pop(idx)
                     save_alarms(st.session_state.alarms)
@@ -111,12 +113,10 @@ with tab_alarm:
 with tab_stopwatch:
     st.title("스톱워치")
     
-    # 현재 측정 시간 계산 (백그라운드 지속 효과)
     current_sw_time = st.session_state.sw_elapsed
     if st.session_state.sw_running:
         current_sw_time += time.time() - st.session_state.sw_start_time
 
-    # 시간 포맷팅 (MM:SS.ms)
     mins = int(current_sw_time // 60)
     secs = int(current_sw_time % 60)
     millis = int((current_sw_time * 100) % 100)
@@ -127,18 +127,21 @@ with tab_stopwatch:
     col1, col2 = st.columns(2)
     with col1:
         if st.session_state.sw_running:
-            if st.button("⏸ 일시정지", use_container_width=True):
+            # 스톱워치 일시정지 (key 부여)
+            if st.button("⏸ 일시정지", key="sw_pause", use_container_width=True):
                 st.session_state.sw_elapsed += time.time() - st.session_state.sw_start_time
                 st.session_state.sw_running = False
                 st.rerun()
         else:
-            if st.button("▶️ 시작", use_container_width=True):
+            # 스톱워치 시작 (key 부여)
+            if st.button("▶️ 시작", key="sw_start", use_container_width=True):
                 st.session_state.sw_start_time = time.time()
                 st.session_state.sw_running = True
                 st.rerun()
     with col2:
         if st.session_state.sw_running:
-            if st.button("⏱ 랩", use_container_width=True):
+            # 랩 (key 부여)
+            if st.button("⏱ 랩", key="sw_lap", use_container_width=True):
                 lap_time = current_sw_time
                 prev_lap = st.session_state.sw_laps[-1]['누적 시간'] if st.session_state.sw_laps else 0
                 interval = lap_time - prev_lap
@@ -147,21 +150,20 @@ with tab_stopwatch:
                     "랩": len(st.session_state.sw_laps) + 1,
                     "구간 시간": f"{int(interval//60):02d}:{int(interval%60):02d}.{int((interval*100)%100):02d}",
                     "누적 시간": f"{mins:02d}:{secs:02d}.{millis:02d}",
-                    "_raw_interval": interval # 색상 강조를 위한 숨김 데이터
+                    "_raw_interval": interval 
                 })
                 st.rerun()
         else:
-            if st.button("🔄 초기화", use_container_width=True):
+            # 초기화 (key 부여)
+            if st.button("🔄 초기화", key="sw_reset", use_container_width=True):
                 st.session_state.sw_elapsed = 0.0
                 st.session_state.sw_laps = []
                 st.session_state.sw_running = False
                 st.rerun()
                 
-    # 랩타임 목록 표시
     if st.session_state.sw_laps:
         st.subheader("랩타임 기록")
         df_laps = pd.DataFrame(st.session_state.sw_laps)
-        # 최단/최장 랩타임 강조 로직
         if len(df_laps) > 1:
             max_idx = df_laps['_raw_interval'].idxmax()
             min_idx = df_laps['_raw_interval'].idxmin()
@@ -181,23 +183,22 @@ with tab_stopwatch:
 with tab_timer:
     st.title("타이머")
     
-    # 프리셋 설정
     st.markdown("**프리셋**")
     p1, p2, p3, p4 = st.columns(4)
     preset_time = 0
-    if p1.button("3분", use_container_width=True): preset_time = 3 * 60
-    if p2.button("5분", use_container_width=True): preset_time = 5 * 60
-    if p3.button("10분", use_container_width=True): preset_time = 10 * 60
-    if p4.button("30분", use_container_width=True): preset_time = 30 * 60
+    # 프리셋 버튼들에 key 부여
+    if p1.button("3분", key="preset_3", use_container_width=True): preset_time = 3 * 60
+    if p2.button("5분", key="preset_5", use_container_width=True): preset_time = 5 * 60
+    if p3.button("10분", key="preset_10", use_container_width=True): preset_time = 10 * 60
+    if p4.button("30분", key="preset_30", use_container_width=True): preset_time = 30 * 60
     
     if not st.session_state.timer_running and st.session_state.timer_paused_time == 0:
         col_h, col_m, col_s = st.columns(3)
-        with col_h: h = st.number_input("시", min_value=0, max_value=23, value=preset_time//3600)
-        with col_m: m = st.number_input("분", min_value=0, max_value=59, value=(preset_time%3600)//60)
-        with col_s: s = st.number_input("초", min_value=0, max_value=59, value=preset_time%60)
+        with col_h: h = st.number_input("시", min_value=0, max_value=23, value=preset_time//3600, key="t_hour")
+        with col_m: m = st.number_input("분", min_value=0, max_value=59, value=(preset_time%3600)//60, key="t_min")
+        with col_s: s = st.number_input("초", min_value=0, max_value=59, value=preset_time%60, key="t_sec")
         total_seconds = h * 3600 + m * 60 + s
     else:
-        # 타이머 작동 중 화면
         if st.session_state.timer_running:
             remains = max(0, st.session_state.timer_end_time - time.time())
             if remains == 0:
@@ -216,24 +217,27 @@ with tab_timer:
     
     with col_start:
         if st.session_state.timer_running:
-            if st.button("⏸ 일시정지", use_container_width=True):
+            # 타이머 일시정지 (key 부여)
+            if st.button("⏸ 일시정지", key="timer_pause", use_container_width=True):
                 st.session_state.timer_paused_time = remains
                 st.session_state.timer_running = False
                 st.rerun()
         else:
-            if st.button("▶️ 시작", use_container_width=True, disabled=(total_seconds <= 0)):
+            # 타이머 시작 (key 부여)
+            if st.button("▶️ 시작", key="timer_start", use_container_width=True, disabled=(total_seconds <= 0)):
                 st.session_state.timer_end_time = time.time() + total_seconds
                 st.session_state.timer_running = True
                 st.session_state.timer_paused_time = 0
                 st.rerun()
                 
     with col_cancel:
-        if st.button("⏹ 취소/초기화", use_container_width=True):
+        # 타이머 취소 (key 부여)
+        if st.button("⏹ 취소/초기화", key="timer_cancel", use_container_width=True):
             st.session_state.timer_running = False
             st.session_state.timer_paused_time = 0
             st.rerun()
 
 # 작동 중 실시간 UI 업데이트를 위한 헬퍼 (Streamlit 제약 극복용)
 if st.session_state.sw_running or st.session_state.timer_running:
-    time.sleep(0.1) # 0.1초마다 렌더링
+    time.sleep(0.1)
     st.rerun()
